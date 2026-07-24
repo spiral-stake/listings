@@ -1,0 +1,28 @@
+# Refreshes the Spiral Stake Dune dashboard daily.
+#
+# Requires one repository secret: DUNE_API_KEY
+#   (Settings → Secrets and variables → Actions → New repository secret)
+#
+# Why this is needed: Dune does not auto-refresh dashboards on the free tier. The heavy compute is
+# kept current by Dune-native materialized-view crons; this Action advances what the dashboard
+# *displays* (tile data + the "updated at" timestamp) by re-executing the cheap display queries and
+# re-saving the dashboard. See dune/README.md.
+name: Refresh Spiral Dune dashboard
+
+on:
+  schedule:
+    - cron: "0 1 * * *" # 01:00 UTC daily — after the 00:00 matview refreshes
+  workflow_dispatch: {} # manual "Run workflow" button in the Actions tab
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Refresh dashboard
+        env:
+          DUNE_API_KEY: ${{ secrets.DUNE_API_KEY }}
+        run: node dune/refresh-dashboard.mjs
