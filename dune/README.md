@@ -83,9 +83,14 @@ self-auditing rather than quietly wrong.
 
 **Revenue.** The only protocol fee is the 10 bps swap fee charged by the KyberSwap/Pendle aggregator
 and paid to the treasury (`0x9ced716f16651b69D5167C82003690621e8F90b9`). The on-chain `s_yieldFee`
-and `s_depositFee` switches are 0% and stay that way. That address is also a general treasury, so
-revenue is scoped strictly to ERC-20 transfers occurring **inside a Spiral transaction** — the same
-rule as [../../REFERRAL-DUNE-SPEC.md](../../REFERRAL-DUNE-SPEC.md) §4. Do not let the two diverge.
+and `s_depositFee` switches are 0% and stay that way. That address is also a general treasury, so we
+count only the transfers its own contracts remit: **ERC-20 transfers into the treasury whose sender
+is FlashLeverage or FlashLeverageRouter.** This captures both fee-charging swaps in an open — the
+leverage swap *and* the `swapAndLeverage` pre-swap — regardless of which aggregator executed them.
+Scoping by the transaction's `to` (an earlier version) undercounted, because the pre-swap rides in a
+transaction called on the aggregator, not on a Spiral contract. ⚠️ [../../REFERRAL-DUNE-SPEC.md](../../REFERRAL-DUNE-SPEC.md)
+§4 still uses the old `tx.to` scoping and has the **same undercount bug** — fix it there before the
+referral dashboard is built.
 
 ---
 
@@ -129,7 +134,7 @@ Dune has two independent refresh concepts, and the dashboard needs both:
 | `10_tvl_over_time` chart ([8089848](https://dune.com/queries/8089848)) | `result_spiral_tvl_history` |
 | `07_weekly_activity.sql` ([8081592](https://dune.com/queries/8081592)) | raw logs (cheap) |
 | `08_cumulative_wallets.sql` ([8081593](https://dune.com/queries/8081593)) | raw logs (cheap) |
-| `09_protocol_revenue.sql` ([8081595](https://dune.com/queries/8081595)) | raw ERC-20 transfers (~11 cr) |
+| `09_protocol_revenue.sql` ([8081595](https://dune.com/queries/8081595)) | ERC-20 transfers, sender-scoped (~2 cr) |
 | `10_liquidations.sql` ([8082178](https://dune.com/queries/8082178)) | Morpho liquidate (~3 cr) |
 
 `refresh-dashboard.mjs` runs these sequentially with 429-backoff (free tier caps at 3 concurrent
@@ -153,17 +158,17 @@ Free tier (`community_fluid_engine_v2`), **2,500 credits/month**.
 | Compute: position state matview (14.7 × 2/day) | 29.4 |
 | Compute: oracle prices matview (2.2 × 4/day) | 8.8 |
 | Compute: 4 history-stage matviews (daily) | ~14.0 |
-| Display: cron pass, once daily (~12 cr/pass) | ~12.0 |
-| **total** | **≈64/day → ≈1,930/month** |
+| Display: cron pass, once daily (~5 cr/pass) | ~5.0 |
+| **total** | **≈57/day → ≈1,700/month** |
 
 Fits inside the 2,500 ceiling with ~550 credits/month of headroom. Two deliberate choices keep it
 there: the history stages refresh once daily (TVL history is a daily series, so finer is pointless),
 and the display cron runs once daily.
 
 **Tuning knobs** if you want a fresher-looking dashboard:
-- Run the display cron more often (edit the workflow `cron`). Each extra pass ≈ 12 credits, so 2×/day
-  adds ~360/month — still fits.
-- The display cost is dominated by the revenue (~11) and liquidations (~3) queries, which scan raw
+- Run the display cron more often (edit the workflow `cron`). Each extra pass ≈ 5 credits, so 2×/day
+  adds ~150/month — comfortably fits.
+- The display cost is dominated by the liquidations (~3) query, which scans raw
   tables. If you want frequent refreshes cheaply, materialize those two and point their panels at the
   matview — then a full pass drops to ~1 credit.
 
@@ -208,7 +213,6 @@ Checked against chain truth, not against its own code.
 
 **Verified correct**
 - No NULL collateral, debt, symbol or user on any position — nothing silently dropped from a `SUM`.
-- All 22 treasury fee transfers priced; revenue total is complete, not an undercount.
 - Liquidation accounting does not double-count (500 Morpho liquidations sampled).
 - No position is above its liquidation LTV; no negative equity.
 - Totals reconcile with two independent implementations (below).
@@ -216,6 +220,7 @@ Checked against chain truth, not against its own code.
 **Fixed**
 | Issue | Fix |
 |---|---|
+| **Revenue undercounted** ($110 vs the true ~$142) — scoping by tx `to` missed the `swapAndLeverage` pre-swap fee, which rides in a transaction called on the aggregator | re-scoped to transfers into the treasury *remitted by* FlashLeverage / Router (captures both swaps, any aggregator) |
 | Hourly matview refresh would exhaust the quota in ~6 days and freeze the dashboard | daily/6h/12h matview schedules |
 | **The dashboard display never auto-updated** — matview refreshes don't advance a query's `latest_execution_id`, so tiles showed frozen data regardless of the crons | external GitHub Action re-executes the dashboard queries daily (`refresh-dashboard.mjs`) |
 | 9 per-panel matviews refreshed tables nothing read (~950 credits/month wasted) | deleted; only the 6 compute matviews remain |
