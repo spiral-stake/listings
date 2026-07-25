@@ -136,6 +136,7 @@ Dune has two independent refresh concepts, and the dashboard needs both:
 | `08_cumulative_wallets.sql` ([8081593](https://dune.com/queries/8081593)) | raw logs (cheap) |
 | `09_protocol_revenue.sql` ([8081595](https://dune.com/queries/8081595)) | ERC-20 transfers, sender-scoped (~2 cr) |
 | `10_liquidations.sql` ([8082178](https://dune.com/queries/8082178)) | Morpho liquidate (~3 cr) |
+| `16_all_time_totals.sql` ([8101568](https://dune.com/queries/8101568)) | lifetime deposited / looped / borrowed — supply+borrow events, oracle-priced (~6 cr) |
 
 `refresh-dashboard.mjs` runs these sequentially with 429-backoff (free tier caps at 3 concurrent
 executions and ~15 execute-requests/min). A full pass ≈ 12 credits.

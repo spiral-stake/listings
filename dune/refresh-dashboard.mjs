@@ -36,6 +36,7 @@ if (!KEY) {
 
 // The queries the dashboard renders. Keep in sync with listings/dune/queries/.
 const QUERY_IDS = [
+  8101568, // all-time totals (deposited / looped / borrowed)
   8081304, // headline KPIs
   8081588, // per-market breakdown
   8081589, // per-chain split
