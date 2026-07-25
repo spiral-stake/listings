@@ -127,6 +127,42 @@ tokens, health rate, per-position split, and EOA attribution via `proxy_detail`.
 
 ---
 
+## Posting guide (how the proposal + vote actually works)
+
+What's verified from DeBank's docs/site, and what to confirm live:
+
+**Verified**
+- The board is at **https://debank.com/proposal**; requests are posted as typed proposals and
+  **"Support new protocol"** is an existing category (precedents: Beradrome Vote76, Chicken Miner
+  Vote279). Each gets a Vote number and a running tally.
+- Voting is **DeBank-account based and reputation-weighted** — DeBank is explicitly a "real user"
+  community with a **Web3 ID** system and social ranking designed to stop bot/sybil voting. So votes
+  from real, established DeBank users count; spun-up empty wallets won't move it.
+- DeBank has run **reward campaigns** for high-quality proposals and voting, and rates proposal
+  quality — so a well-written, well-sourced proposal is materially better than a one-liner.
+
+**Confirm on-site when you log in** (DeBank tunes these and they aren't reliably documented):
+- Whether creating a proposal needs a minimum Web3-ID / account standing or a small fee.
+- The current pass/prioritisation threshold (it's vote-driven, not a fixed number).
+
+**Steps**
+1. Log in to DeBank with the team wallet; set up a **Web3 ID** if the account doesn't have one
+   (needed for full standing to create/vote).
+2. Create proposal → category **Support new protocol** → paste title + description from
+   [proposal-draft.md](./proposal-draft.md).
+3. In the first comment, drop the engineer-facing summary + offer the full spec
+   ([INTEGRATION.md](./INTEGRATION.md)) and the live Dune dashboard as proof of real activity.
+4. **Campaign for votes** — this is the actual lever:
+   - Mobilise real Spiral users (they have wallets and a reason to want their positions visible) —
+     an in-app / Twitter / Discord nudge with the direct proposal link.
+   - Ask the team + any DeBank-active partners to vote.
+   - Have the warm contact flag it internally in parallel.
+5. Once it gains traction, the contact hands [INTEGRATION.md](./INTEGRATION.md) to their engineers;
+   support QA (Phase 3).
+
+The single biggest determinant is **how many real DeBank users vote**, so time the post for when you
+can drive that (e.g., alongside a user comms push), not on a quiet day.
+
 ## Blockers & risks
 
 1. **Approval is vote/queue-gated, no SLA.** DeBank still builds it and on their timeline. Mitigations:

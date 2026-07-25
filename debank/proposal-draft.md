@@ -35,9 +35,13 @@ those positions — their collateral, debt, net value, and liquidation health �
 A Spiral adapter surfaces them correctly, attributed to the user's own wallet.
 
 - Website: https://app.spiralstake.xyz
-- Docs: https://docs.spiralstake.xyz  *(confirm final URL)*
-- Twitter: *(add)*
-- Audits: Sherlock, Cyfrin, Phage — *(add report links)*
+- Docs: https://docs.spiralstake.xyz
+- Twitter: https://x.com/0xspiralstake
+- Logo: https://app.spiralstake.xyz/logo.svg
+- Audits:
+  - Sherlock — https://github.com/spiral-stake/v2-core/blob/main/audits/2026-04-27-sherlock-spiral-stake-v2.pdf
+  - Cyfrin — https://github.com/spiral-stake/v2-core/blob/main/audits/2026-03-12-cyfrin-spiral-stake-v2.pdf
+  - Phage — https://github.com/spiral-stake/v2-core/blob/main/audits/2026-01-20-phage-spiral-stake-v2.pdf
 - Chains: Ethereum (`eth`), Robinhood Chain (`hood`, id 4663)
 
 **Integration is straightforward** and fully specified for your team (contracts, position-resolution,
@@ -55,13 +59,14 @@ can share directly). One-line summary: **given a user EOA, call
 
 ---
 
-## Assets to attach (gather once — reused for the DefiLlama listing too)
+## Assets (gathered from the repos — reused for the DefiLlama listing too)
 
-- [ ] Logo — high-res, square, transparent PNG/SVG
-- [ ] Official Twitter/X handle
-- [ ] Public audit report URLs (Sherlock, Cyfrin, Phage)
-- [ ] Final docs URL
-- [ ] One-line + one-paragraph descriptions (above is a draft)
+- [x] Logo — `app.spiralstake.xyz/logo.svg` (source `v2-client/public/logo.svg`). If DeBank wants a
+      raster, export a square high-res PNG from it.
+- [x] Twitter/X — https://x.com/0xspiralstake
+- [x] Audit reports — Sherlock / Cyfrin / Phage (URLs above; source PDFs in `v2-core/audits/`)
+- [x] Docs — https://docs.spiralstake.xyz
+- [x] Descriptions — draft above
 
 ## Campaign notes
 
