@@ -8,22 +8,24 @@ in [../../LISTINGS-PLAN.md](../../LISTINGS-PLAN.md) §3.
 
 ---
 
-## How DeBank works — and why it's unlike DefiLlama / Dune
+## How DeBank works — the two routes
 
-DeBank is fundamentally different from the other two listings, and this shapes everything:
+DeBank writes every protocol adapter **in-house** — there's no public adapter repo, PR, or SDK
+(their docs are all about *consuming* data, not getting indexed). A protocol appears in portfolios
+only when DeBank's team builds it. There are two ways to get them to build it:
 
-- **There is no self-service path.** No public adapter repo, no PR, no submission form, no SDK.
-  DeBank's docs (`docs.cloud.debank.com`) are entirely about *consuming* their data — the Cloud API,
-  DeBank Connect (OAuth2), the portfolio endpoints. Nothing about getting *your* protocol indexed.
-- **DeBank writes every protocol adapter in-house.** A protocol appears in portfolios only when
-  DeBank's own team builds and ships an adapter for it. So this is a **relationship-driven ask**, not
-  an engineering task we can complete unilaterally. We can make it fast and easy for them, but we
-  cannot merge it ourselves.
-- **We have a warm contact** (per the founders), which is the single biggest lever — it turns an
-  unbounded cold queue into a real conversation.
+1. **The proposal + vote route (primary): https://debank.com/proposal.** DeBank runs a public
+   governance board where anyone posts a request — categories include *Support new protocol*,
+   *Support new token*, *Support new chain*. The community votes; well-supported proposals get
+   prioritised and built. Real examples: "Support new protocol: Beradrome (Vote76)", "…Chicken Miner
+   (Vote279)". **This is the path the founders are taking.** Our proposal is
+   *"Support new protocol: Spiral Stake"* — draft ready in [proposal-draft.md](./proposal-draft.md).
+2. **The warm-contact route (accelerant):** the founders have a DeBank contact, which can shepherd
+   the proposal and hand our spec straight to their engineers.
 
-What we control: making the integration trivial for them to build and impossible to get wrong — a
-precise spec, a reference implementation, and test vectors.
+Either way, the deliverable that makes it *build-able* is the same: a precise spec + reference
+implementation + test vectors, in [INTEGRATION.md](./INTEGRATION.md). What we control is making the
+adapter trivial to build and impossible to get wrong; DeBank still ships it.
 
 ---
 
@@ -100,39 +102,35 @@ So chain coverage is **not** a blocker.
 
 ## Roadmap
 
-**Phase 0 — Timing decision (founders).** DeBank is discretionary and you get roughly one clean shot
-at the contact's attention. Current net TVL is ~$5.8k across 9 users; the all-time figures
-(~$148k looped, ~$16k deposited) tell a better story. Decide whether to spend the contact now or
-after more growth. Everything below can be *prepared* now regardless.
+**Phase 1 — Packet (DONE, ours to build):**
+- [x] Integration spec + read path + `portfolio_item` mapping — [INTEGRATION.md](./INTEGRATION.md)
+- [x] Worked example against a live wallet with two positions (one per chain), exact expected JSON
+- [x] Test vectors for QA
+- [x] Proposal draft — [proposal-draft.md](./proposal-draft.md)
+- [ ] Brand assets: logo, Twitter, audit report URLs *(founders — same set the DefiLlama PR needs)*
+- [ ] *(optional)* un-gate a public `GET /v1/positions/{address}` on `mcp` for an API-based integration
 
-**Phase 1 — Build the integration packet** (ours to do, ~1 day):
-1. This spec (done) + a **worked example**: run `mcp` position-read against a real Spiral user and
-   produce the exact DeBank portfolio-item JSON we expect, so they have ground truth to match.
-2. Optionally stand up a public read endpoint — un-gate a `/v1/positions/{address}` from the existing
-   partner route in `mcp` — for integrators who prefer an API to a chain spec. Offer it; don't lead
-   with it (chain-native specs get taken more seriously).
-3. Brand assets: logo (high-res, square), name, site, category ("Leveraged Farming"), audit links.
+**Phase 2 — Post the proposal (founders):**
+1. Post *"Support new protocol: Spiral Stake"* at https://debank.com/proposal (content in the draft).
+2. Confirm on-site whether creating/voting needs a DeBank web3-ID balance or fee, and satisfy it.
+3. Rally votes — team, community, and especially real Spiral users; link the Dune dashboard as proof.
+4. In parallel, the warm contact shepherds it and takes the spec to their engineers.
 
-**Phase 2 — Make the ask** (via the warm contact):
-1. Send the packet; ask their preferred integration input (chain spec / API / subgraph) and their
-   queue + any cost.
-2. Fallback channels if needed: `hello.cloud@debank.com` (their documented address), or their BD via
-   the app.
+**Phase 3 — Support their build + QA:** provide test addresses + expected numbers; verify net value,
+tokens, health rate, per-position split, and EOA attribution via `proxy_detail`.
 
-**Phase 3 — Support their build + QA:**
-1. Provide test addresses (real open positions on both chains) and the expected rendered numbers.
-2. Verify: net value, collateral/debt tokens, health rate, per-position split, and that the position
-   is attributed to the **EOA** (not the proxy) via `proxy_detail`.
+**Phase 4 — Launch + verify:** confirm Spiral shows in live users' portfolios on both chains.
 
-**Phase 4 — Launch + verify:** confirm Spiral appears in live users' portfolios on both chains and
-the protocol/TVL entry is correct.
+> Timing: current net TVL is ~$5.8k across 9 users; lead the proposal with the all-time figures
+> (~$148k looped, ~$16k deposited lifetime) and the audits. Votes matter more than snapshot TVL, so
+> the campaign (rallying real users to vote) is the lever — decide when you can mobilise that.
 
 ---
 
 ## Blockers & risks
 
-1. **Relationship-gated, no SLA, unbounded timeline.** Nothing we build removes this; the warm
-   contact is the mitigation.
+1. **Approval is vote/queue-gated, no SLA.** DeBank still builds it and on their timeline. Mitigations:
+   the proposal vote (rally real users) + the warm contact. Nothing we build merges it ourselves.
 2. **UserProxy attribution** — the reason a bespoke adapter is required at all. Fully specified above;
    `proxy_detail` is DeBank's native mechanism for it.
 3. **TVL optics** — a ~$5.8k ask is weak; lead with the all-time/looped framing and the audits.
