@@ -27,15 +27,18 @@
 
 const API = "https://api.dune.com/api/v1";
 const MCP = "https://api.dune.com/mcp/v1";
-const DASHBOARD_ID = 216731;
+const DASHBOARD_IDS = [216731, 216873]; // v2 (live) + v1 (historical)
 const KEY = process.env.DUNE_API_KEY;
 if (!KEY) {
   console.error("DUNE_API_KEY is not set");
   process.exit(1);
 }
 
-// The queries the dashboard renders. Keep in sync with listings/dune/queries/.
+// The queries both dashboards render. Keep in sync with listings/dune/queries/ (v2) and v1/ (v1).
+// v1 is wound down: its data is frozen behind the weekly result_v1_flows matview, so re-executing
+// its display queries just re-reads that — cheap, and keeps the v1 dashboard's timestamp current.
 const QUERY_IDS = [
+  // v2 (live)
   8101568, // all-time totals (deposited / looped / borrowed)
   8081304, // headline KPIs
   8081588, // per-market breakdown
@@ -47,6 +50,14 @@ const QUERY_IDS = [
   8081595, // protocol revenue
   8082178, // liquidations
   8089848, // TVL over time
+  // v1 (historical)
+  8103175, // v1 all-time totals
+  8103176, // v1 per-market
+  8103177, // v1 TVL over time
+  8103178, // v1 position stats
+  8103179, // v1 weekly activity
+  8103180, // v1 revenue
+  8103181, // v1 liquidations
 ];
 
 const GAP_MS = 3000; // between queries
@@ -108,12 +119,12 @@ async function mcp(name, args) {
   return c?.type === "text" ? JSON.parse(c.text) : msg.result;
 }
 
-// Re-save the dashboard unchanged to reset its "updated at" timestamp. Echoes the current widget
+// Re-save a dashboard unchanged to reset its "updated at" timestamp. Echoes the current widget
 // layout so it stays correct even if the dashboard is edited later.
-async function touchDashboard() {
-  const d = await mcp("getDashboard", { id: DASHBOARD_ID });
+async function touchDashboard(dashboardId) {
+  const d = await mcp("getDashboard", { id: dashboardId });
   await mcp("updateDashboard", {
-    dashboardId: DASHBOARD_ID,
+    dashboardId,
     visualizationWidgets: (d.visualizationWidgets ?? []).map((w) => ({ visualizationId: w.visualizationId, position: w.position })),
     textWidgets: (d.textWidgets ?? []).map((w) => ({ text: w.text, position: w.position })),
   });
@@ -136,8 +147,8 @@ async function main() {
     console.error(`\n${failures.length} query(s) failed: ${failures.join(", ")}`);
     process.exit(1);
   }
-  await touchDashboard();
-  console.log("\nDashboard display refreshed and timestamp reset.");
+  for (const id of DASHBOARD_IDS) await touchDashboard(id);
+  console.log("\nDashboards refreshed and timestamps reset.");
 }
 
 main().catch((e) => {

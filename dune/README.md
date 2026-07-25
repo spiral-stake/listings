@@ -1,11 +1,24 @@
-# Dune — Spiral Stake protocol dashboard
+# Dune — Spiral Stake protocol dashboards
 
-**Live:** https://dune.com/jodguy5641/spiral-stake-protocol-dashboard
+**v2 (live):** https://dune.com/jodguy5641/spiral-stake-protocol-dashboard
+**v1 (historical):** https://dune.com/jodguy5641/spiral-stake-v1-protocol-dashboard-historical
 
-Every `.sql` file in `queries/` is the exact source of a live Dune query, so the dashboard can be
-rebuilt from this repo if the Dune account is ever lost. Companion research: [../../LISTINGS-PLAN.md](../../LISTINGS-PLAN.md) §4.
+The two dashboards cross-link. `queries/` holds the v2 SQL; `v1/` holds the v1 SQL — each `.sql` is
+the exact source of a live query, so either dashboard can be rebuilt from this repo. Companion
+research: [../../LISTINGS-PLAN.md](../../LISTINGS-PLAN.md) §4.
 
 Audited for production on 2026-07-23 — see [Audit](#audit-2026-07-23) for what was checked and fixed.
+
+> **v1 vs v2.** v1 (Ethereum, `FlashLeverage 0xcAcC…` / `FlashLeverageCore 0xD245…`) is **wound down**
+> — it ran Oct 2025→early 2026 on Pendle-PT collateral and closed out as the PTs matured
+> (~$3.9M all-time looped, $784k deposited, 22 users, 0 liquidations). Its dashboard is a
+> **retrospective**, built to the same methodology as v2 (per-position proxies, oracle-priced PT
+> collateral) but frozen: one weekly base matview (`result_v1_flows`, from `v1/00_base_flows.sql`)
+> that every v1 panel reads. Because v1 is frozen and a pure close doesn't call the oracle, the v1
+> TVL-over-time chart is **cost basis** (out-flows valued at entry marks), which is exact at the
+> endpoints and nets cleanly to ~0 at wind-down. v1 revenue is the **10% yield fee** on profitable
+> closes to the v1 treasury `0xeB90…49D5` (v1 charged no swap fee); v2's is the 10 bps swap fee.
+> The daily refresh cron (`refresh-dashboard.mjs`) refreshes both dashboards.
 
 ---
 
