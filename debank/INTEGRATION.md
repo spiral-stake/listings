@@ -70,7 +70,34 @@ Notes:
 | `stats.net_usd_value` | `net_usd` |
 | `proxy_detail.project_id` / proxy address | the position's `userProxy` |
 
-## 5. Worked example (live data, 2026-07-25)
+## 5. TVL treatment (please read — this avoids a double-count)
+
+Spiral's collateral sits **inside Morpho Blue**, which DeBank already indexes on both chains. So that
+collateral is *already* in DeBank's Morpho TVL. If Spiral's protocol TVL is then summed from each
+position's **deposit/asset value**, the same dollars are counted twice — once under Morpho, once under
+Spiral. This is the classic leverage/looping double-count.
+
+The value Spiral genuinely adds is the user's own equity:
+
+```
+net_usd_value = collateral_usd - debt_usd      (≈ collateral − borrowed)
+```
+
+Live example of the gap: current looped collateral ≈ **$40k**, debt ≈ **$34.6k**, so real user
+equity ≈ **$5.8k**. The all-time deposited figure is ≈ **$16k**. Showing $40k as Spiral's TVL would
+double-count Morpho.
+
+**Recommendation:** base Spiral's protocol TVL on the **sum of `net_usd_value`** (user equity), not
+the deposit value. This matches how DefiLlama lists Spiral — there we report `tvl = collateral − debt`,
+put the debt in a separate `borrowed` bucket, and set the `doublecounted` flag so Spiral is excluded
+from chain totals by default. If DeBank's convention must use deposit value, please at least treat
+Spiral as a leveraged/looping protocol whose collateral overlaps Morpho Blue, and handle it the same
+way you handle other looping protocols.
+
+We emit all three stats per position (`asset_usd_value`, `debt_usd_value`, `net_usd_value`) so either
+choice is trivial — but the honest, non-inflated headline is `net_usd_value`.
+
+## 6. Worked example (live data, 2026-07-25)
 
 Wallet **`0xc15073a2f754caefecde4c6e58e5a3100dff9a43`** — has two open Spiral positions, one on each
 chain. The adapter should attribute **both** to this EOA.
@@ -117,7 +144,7 @@ chain. The adapter should attribute **both** to this EOA.
 }
 ```
 
-## 6. Test vectors for QA (live, 2026-07-25)
+## 7. Test vectors for QA (live, 2026-07-25)
 
 | Wallet | Chain | Market | Net USD | Health |
 |---|---|---|---|---|
@@ -129,7 +156,7 @@ These are small (protocol is early); the numbers move with price/interest, so ma
 attribution* first, then values within a tolerance. The Dune dashboard is an independent cross-check:
 https://dune.com/jodguy5641/spiral-stake-protocol-dashboard
 
-## 7. Optional: hosted API instead of a chain spec
+## 8. Optional: hosted API instead of a chain spec
 
 If DeBank prefers an API over reading chain directly, we can expose a public
 `GET /v1/positions/{address}` on `api.spiralstake.xyz` returning the resolved positions (net value,

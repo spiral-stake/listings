@@ -170,6 +170,10 @@ can drive that (e.g., alongside a user comms push), not on a quiet day.
 2. **UserProxy attribution** — the reason a bespoke adapter is required at all. Fully specified above;
    `proxy_detail` is DeBank's native mechanism for it.
 3. **TVL optics** — a ~$5.8k ask is weak; lead with the all-time/looped framing and the audits.
+4. **TVL double-count** — DeBank builds protocol TVL by summing tracked positions and typically uses
+   deposit value, which would show Spiral's looped collateral (already inside DeBank's Morpho TVL) and
+   double-count it. We ask them to base Spiral TVL on net equity; spelled out in
+   [INTEGRATION.md](./INTEGRATION.md) §5.
 4. **Robinhood history** — `is_support_history: false`; current-only on that chain. Minor.
 5. **Cost** — no published listing fee (likely free for a legitimate, audited protocol, but confirm
    with the contact). Note: DeBank's paid products — the Cloud **API** (units-based) and **broadcast
