@@ -149,7 +149,17 @@ Dune has two independent refresh concepts, and the dashboard needs both:
 | `08_cumulative_wallets.sql` ([8081593](https://dune.com/queries/8081593)) | raw logs (cheap) |
 | `09_protocol_revenue.sql` ([8081595](https://dune.com/queries/8081595)) | ERC-20 transfers, sender-scoped (~2 cr) |
 | `10_liquidations.sql` ([8082178](https://dune.com/queries/8082178)) | Morpho liquidate (~3 cr) |
-| `16_all_time_totals.sql` ([8101568](https://dune.com/queries/8101568)) | lifetime deposited / looped / borrowed — supply+borrow events, oracle-priced (~6 cr) |
+| `16_all_time_totals.sql` ([8101568](https://dune.com/queries/8101568)) | lifetime deposited / looped / borrowed — supply+borrow events, oracle-priced (~7 cr). **Compute only** — materialized daily as `result_spiral_alltime`; the dashboard tiles read a thin display query ([8144540](https://dune.com/queries/8144540)) so they refresh cheaply. |
+
+> **Why the split (2026-07-29 fix).** The all-time-totals tiles were showing stale ("4d ago") while
+> the rest of the dashboard was current. Cause: with no external cron running (the GitHub Action was
+> not yet set up), the only thing refreshing the display was Dune's free *popular-dashboard*
+> auto-refresh, which runs on the community cluster with a 2-minute cap. Every other tile reads a
+> matview and completes instantly, but the all-time-totals query scanned raw multichain Morpho
+> events (~7 cr) and timed out there, so those three counters got stuck at their last manual run.
+> Fix: materialize the heavy query (`result_spiral_alltime`, daily) and point the counters at a thin
+> `SELECT * FROM result_spiral_alltime`. **General rule: every dashboard tile must read a matview or
+> be otherwise cheap — never scan raw event tables directly — so free auto-refresh can complete it.**
 
 `refresh-dashboard.mjs` runs these sequentially with 429-backoff (free tier caps at 3 concurrent
 executions and ~15 execute-requests/min). A full pass ≈ 12 credits.
