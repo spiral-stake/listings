@@ -143,11 +143,20 @@ async function main() {
     }
     await sleep(GAP_MS);
   }
+  // Reset dashboard timestamps best-effort, even if some queries failed — a single flaky/heavy
+  // query must not leave the dashboards looking stale. (Every tile reads a matview or is otherwise
+  // cheap, so a query failure here should be transient, not a timeout.)
+  for (const id of DASHBOARD_IDS) {
+    try {
+      await touchDashboard(id);
+    } catch (e) {
+      console.error(`  ✗ touch dashboard ${id}: ${e.message}`);
+    }
+  }
   if (failures.length) {
     console.error(`\n${failures.length} query(s) failed: ${failures.join(", ")}`);
-    process.exit(1);
+    process.exit(1); // surface in CI, but dashboards were still touched above
   }
-  for (const id of DASHBOARD_IDS) await touchDashboard(id);
   console.log("\nDashboards refreshed and timestamps reset.");
 }
 
