@@ -18,7 +18,7 @@ Audited for production on 2026-07-23 — see [Audit](#audit-2026-07-23) for what
 > TVL-over-time chart is **cost basis** (out-flows valued at entry marks), which is exact at the
 > endpoints and nets cleanly to ~0 at wind-down. v1 revenue is the **10% yield fee** on profitable
 > closes to the v1 treasury `0xeB90…49D5` (v1 charged no swap fee); v2's is the 10 bps swap fee.
-> The daily refresh cron (`refresh-dashboard.mjs`) refreshes both dashboards.
+> The refresh cron (`refresh-dashboard.mjs`) refreshes both dashboards every 12h.
 
 ---
 
@@ -36,7 +36,7 @@ Morpho Blue events (morpho_blue_multichain.*)   raw logs (ethereum.logs / robinh
                      │
         oracle price() staticcalls from *.traces
                      │
-              02_oracle_prices.sql ──► matview  result_spiral_oracle_prices   (every 6h)
+              02_oracle_prices.sql ──► matview  result_spiral_oracle_prices   (every 12h)
                      │
               01_position_state.sql ─► matview  result_spiral_positions       (every 12h)
                      │
@@ -116,7 +116,7 @@ Dune has two independent refresh concepts, and the dashboard needs both:
 2. **Display layer — query executions (external cron).** A dashboard tile renders its query's
    `latest_execution_id`. **A matview refresh does NOT advance that pointer** — only executing the
    query does (interactive Run, a paid-engine scheduler, or the API). So the display is refreshed by
-   an external GitHub Action, `refresh-dashboard.mjs`, that re-executes the dashboard queries daily.
+   an external GitHub Action, `refresh-dashboard.mjs`, that re-executes the dashboard queries every 12h.
    Because every dashboard query reads a matview (not raw chain tables), each execution is cheap.
 
 > This layering was a fix, not the original design. The first version materialized *every* panel and
@@ -129,7 +129,7 @@ Dune has two independent refresh concepts, and the dashboard needs both:
 | Query | Matview | Refresh | Feeds |
 |---|---|---|---|
 | `01_position_state.sql` ([8081300](https://dune.com/queries/8081300)) | `result_spiral_positions` | 12h | snapshot panels 03–06, 11 |
-| `02_oracle_prices.sql` ([8081347](https://dune.com/queries/8081347)) | `result_spiral_oracle_prices` | 6h | position state |
+| `02_oracle_prices.sql` ([8081347](https://dune.com/queries/8081347)) | `result_spiral_oracle_prices` | 12h | position state |
 | `12_hist_market_ratio_daily.sql` ([8089806](https://dune.com/queries/8089806)) | `result_spiral_mkt_ratio_daily` | daily | TVL history |
 | `13_hist_position_daily.sql` ([8089807](https://dune.com/queries/8089807)) | `result_spiral_pos_daily` | daily | TVL history |
 | `14_hist_oracle_daily.sql` ([8089808](https://dune.com/queries/8089808)) | `result_spiral_oracle_daily` | daily | TVL history |

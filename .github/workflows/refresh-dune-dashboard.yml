@@ -11,7 +11,7 @@ name: Refresh Spiral Dune dashboard
 
 on:
   schedule:
-    - cron: "0 1 * * *" # 01:00 UTC daily — after the 00:00 matview refreshes
+    - cron: "0 */12 * * *" # every 12h (00:00 & 12:00 UTC), matching the position matview cadence
   workflow_dispatch: {} # manual "Run workflow" button in the Actions tab
 
 jobs:
