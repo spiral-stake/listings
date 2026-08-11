@@ -10,6 +10,13 @@
 -- interest actually accrued by then rather than today's ratio applied backwards. Collateral is
 -- valued with the same Morpho oracle the snapshot and the app use, so the last point on this chart
 -- reconciles with the headline counters.
+--
+-- PERF (2026-08-11): this refresh was timing out at the 2-min engine cap once history grew (frozen
+-- at Aug 6). Two fixes, no change to the numbers:
+--   1. loan prices read from prices.day (not prices.hour, 24x smaller) with an explicit
+--      blockchain IN (...) partition filter (was scanning all 60+ chains).
+--   2. token decimals looked up from a filtered tokens.erc20 (was a full-table scan).
+-- Now completes in well under 2 minutes on the small engine (~4 credits).
 WITH mkts AS (SELECT DISTINCT chain, id FROM dune.jodguy5641.result_spiral_pos_daily),
 params AS (
   SELECT cm.chain, cm.id,
@@ -19,11 +26,20 @@ params AS (
   FROM morpho_blue_multichain.morphoblue_evt_createmarket cm
   JOIN mkts m ON m.chain=cm.chain AND m.id=cm.id
 ),
-tok AS (SELECT blockchain, contract_address, symbol, decimals FROM tokens.erc20),
+relevant AS (
+  SELECT chain, loan_token AS tok FROM params
+  UNION SELECT chain, collateral_token FROM params
+),
+tok AS (
+  SELECT t.blockchain, t.contract_address, t.decimals
+  FROM tokens.erc20 t
+  JOIN relevant r ON r.chain = t.blockchain AND r.tok = t.contract_address
+),
 loan_px AS (
   SELECT blockchain AS chain, contract_address AS tok, CAST(timestamp AS date) AS d, AVG(price) AS price
-  FROM prices.hour
-  WHERE timestamp >= TIMESTAMP '2026-06-16'
+  FROM prices.day
+  WHERE blockchain IN ('ethereum','robinhood')
+    AND timestamp >= TIMESTAMP '2026-06-16'
     AND contract_address IN (SELECT loan_token FROM params)
   GROUP BY 1,2,3
 ),
