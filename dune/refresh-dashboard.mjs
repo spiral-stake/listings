@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Refresh the Spiral Stake Dune dashboard *display*.
+// Refresh the Spiral Stake Dune dashboard *display*, and act as a freshness monitor.
 //
 // Why this exists: Dune dashboards are NOT updated automatically, and a materialized-view refresh
 // updates the view's table but NOT the query execution a dashboard renders. A dashboard tile shows
@@ -7,21 +7,34 @@
 // (interactive Run, native scheduler on a paid engine, or the API). This script is that execution,
 // on a schedule we control, for free.
 //
-// Two steps:
+// Three steps:
 //   1. Execute each dashboard query -> refreshes the tile DATA. Each query reads a materialized view
-//      (the heavy on-chain compute is done by Dune-native matview crons), so these are cheap.
+//      (the heavy on-chain compute is done by Dune-native matview crons), so these are cheap. A
+//      failed query is retried once before it counts as failed (network blips are common).
 //   2. Touch the dashboard (re-save it unchanged) -> resets the "updated at" timestamp shown on the
 //      dashboard. That label tracks the last dashboard EDIT, not query executions, so step 1 alone
 //      leaves it stale. There is no plain-REST dashboard endpoint, so this goes through Dune's MCP
 //      endpoint (stateless, same API key). The get->put echoes the current layout, so it is safe if
 //      the dashboard is later edited.
+//   3. Freshness guard -> execute the freshness probe query and check how many days stale the daily
+//      data pipeline is. This is what makes the run's red/green MEANINGFUL:
+//        * Green  = dashboards updated AND the underlying data is current.
+//        * Red    = a real problem worth investigating (a matview refresh is silently failing, or
+//                   credits are exhausted, or auth is broken) — NOT a single transient blip.
+//      Before this guard, a frozen matview (e.g. a query that started timing out) showed a fresh
+//      "updated" timestamp on stale numbers, and nobody noticed until users complained. Now it goes
+//      red here first.
+//
+// Exit code policy (a single flaky query must NOT page anyone):
+//   * exit 1 (RED) only if: the data is >= STALE_DAYS_ALERT days stale, OR a dashboard could not be
+//     touched, OR at least half the queries failed even after a retry (systemic: credits/auth).
+//   * exit 0 (GREEN) otherwise — a few transient query failures are logged as warnings and tolerated
+//     because the dashboards were still touched and the data is confirmed fresh.
 //
 // Free-tier limits this respects:
-//   * max 3 concurrent executions
-//   * ~15 execute-requests/minute, ~40 status-requests/minute
-// It runs queries one at a time with a short gap and retries on HTTP 429 with backoff, so it stays
-// well under both caps. A full pass is ~2-4 min — fine for a daily Action.
-//   * executions run on the free engine ("performance": "free") -> no surprise credit tier
+//   * max 3 concurrent executions; ~15 execute-requests/minute, ~40 status-requests/minute
+//     -> runs queries one at a time with a short gap, retries HTTP 429 with backoff.
+//   * executions run on the free engine ("performance": "free") -> no surprise credit tier.
 //
 // Env: DUNE_API_KEY (required).
 
@@ -59,6 +72,9 @@ const QUERY_IDS = [
   8103180, // v1 revenue
   8103181, // v1 liquidations
 ];
+
+const FRESHNESS_QUERY_ID = 8292626; // returns { data_through, stale_days } off result_spiral_tvl_history
+const STALE_DAYS_ALERT = 2; // matviews refresh daily; >=2 days behind means a refresh is broken
 
 const GAP_MS = 3000; // between queries
 const POLL_MS = 10000; // between status checks
@@ -102,6 +118,30 @@ async function waitFor(queryId, executionId) {
   throw new Error(`query ${queryId} timed out after ${MAX_WAIT_MS}ms`);
 }
 
+// Execute a query and wait for it, retrying once on any failure (transient blips are common).
+async function runQuery(queryId) {
+  try {
+    await waitFor(queryId, await execute(queryId));
+  } catch (first) {
+    console.error(`  … ${queryId} failed (${first.message}); retrying once`);
+    await sleep(GAP_MS);
+    await waitFor(queryId, await execute(queryId)); // a second failure propagates
+  }
+}
+
+async function fetchRows(executionId) {
+  const json = await req(`${API}/execution/${executionId}/results`, { headers }, `results ${executionId}`);
+  return json.result?.rows ?? [];
+}
+
+// Execute the freshness probe and return how stale the daily data pipeline is.
+async function checkFreshness() {
+  const executionId = await execute(FRESHNESS_QUERY_ID);
+  await waitFor(FRESHNESS_QUERY_ID, executionId);
+  const row = (await fetchRows(executionId))[0] ?? {};
+  return { staleDays: Number(row.stale_days ?? NaN), dataThrough: row.data_through ?? null };
+}
+
 // Dashboard writes are only exposed via Dune's MCP endpoint (stateless JSON-RPC, same API key),
 // not the plain REST Data API. Returns the tool result.
 async function mcp(name, args) {
@@ -131,11 +171,11 @@ async function touchDashboard(dashboardId) {
 }
 
 async function main() {
-  console.log(`Refreshing ${QUERY_IDS.length} Spiral dashboard queries (sequential, 429-safe)…`);
+  console.log(`Refreshing ${QUERY_IDS.length} Spiral dashboard queries (sequential, 429-safe, retry-once)…`);
   const failures = [];
   for (const queryId of QUERY_IDS) {
     try {
-      await waitFor(queryId, await execute(queryId));
+      await runQuery(queryId);
       console.log(`  ✓ ${queryId}`);
     } catch (e) {
       failures.push(queryId);
@@ -143,21 +183,46 @@ async function main() {
     }
     await sleep(GAP_MS);
   }
-  // Reset dashboard timestamps best-effort, even if some queries failed — a single flaky/heavy
-  // query must not leave the dashboards looking stale. (Every tile reads a matview or is otherwise
-  // cheap, so a query failure here should be transient, not a timeout.)
+
+  // Reset dashboard timestamps best-effort — a single flaky query must not leave them looking stale.
+  let touchFailed = false;
   for (const id of DASHBOARD_IDS) {
     try {
       await touchDashboard(id);
     } catch (e) {
+      touchFailed = true;
       console.error(`  ✗ touch dashboard ${id}: ${e.message}`);
     }
   }
-  if (failures.length) {
-    console.error(`\n${failures.length} query(s) failed: ${failures.join(", ")}`);
-    process.exit(1); // surface in CI, but dashboards were still touched above
+
+  // Freshness guard: is the underlying data actually current? (This is the real staleness alarm.)
+  let staleDays = NaN;
+  let dataThrough = null;
+  try {
+    ({ staleDays, dataThrough } = await checkFreshness());
+  } catch (e) {
+    console.error(`  ✗ freshness probe failed: ${e.message}`);
   }
-  console.log("\nDashboards refreshed and timestamps reset.");
+
+  const systemic = failures.length >= Math.ceil(QUERY_IDS.length / 2);
+  const dataStale = !Number.isFinite(staleDays) || staleDays >= STALE_DAYS_ALERT;
+
+  console.log(
+    `\nData through ${dataThrough ?? "?"} (stale_days=${Number.isFinite(staleDays) ? staleDays : "unknown"}); ` +
+      `${failures.length}/${QUERY_IDS.length} queries failed after retry.`
+  );
+
+  if (systemic || touchFailed || dataStale) {
+    if (systemic) console.error(`FAIL: ${failures.length}/${QUERY_IDS.length} queries failed — systemic (credits exhausted or auth broken?).`);
+    if (touchFailed) console.error(`FAIL: a dashboard could not be touched.`);
+    if (dataStale) console.error(`FAIL: data is ${Number.isFinite(staleDays) ? staleDays + " days" : "of UNKNOWN age"} stale (>= ${STALE_DAYS_ALERT}d) — a matview refresh is broken. Check Dune matview schedules.`);
+    process.exit(1);
+  }
+
+  if (failures.length) {
+    console.warn(`Note: ${failures.length} transient query failure(s) tolerated — dashboards updated and data confirmed fresh.`);
+  }
+  console.log("Dashboards refreshed, timestamps reset, data fresh.");
 }
 
 main().catch((e) => {
