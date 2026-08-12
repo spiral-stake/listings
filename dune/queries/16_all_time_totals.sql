@@ -7,6 +7,13 @@
 -- of the dashboard), which prices PT collateral that has no DEX price on Dune. Spiral collateral
 -- supplies are always remitted by FlashLeverage, so `caller` identifies them in a single scan;
 -- borrows are by the position proxy, so they are matched on the proxy set from the supplies.
+--
+-- PERF (2026-08-12): this refresh was timing out at the 2-min engine cap (the SAME failure that hit
+-- the TVL chart), silently freezing these headline counters ~9% low. Fixed with no change to the
+-- methodology: loan prices now read from prices.day (24x smaller than prices.hour) with an explicit
+-- blockchain IN (...) filter (was scanning all 60+ chains). Verified: zero flows dropped to a null
+-- price, so no undercount. ~8 cr, well under the cap. `computed_on` lets the refresh Action's
+-- freshness guard detect if this matview ever freezes again.
 WITH supplies AS (
   SELECT sc.chain, sc.id, sc.onbehalf AS proxy, sc.evt_block_time AS bt, CAST(sc.assets AS double) AS assets
   FROM morpho_blue_multichain.morphoblue_evt_supplycollateral sc
@@ -30,8 +37,11 @@ params AS (
   JOIN mids m ON m.chain=cm.chain AND m.id=cm.id
 ),
 loan_px AS (
-  SELECT blockchain, contract_address, timestamp, price FROM prices.hour
-  WHERE timestamp >= TIMESTAMP '2026-06-01' AND contract_address IN (SELECT loan_token FROM params)
+  SELECT blockchain, contract_address, CAST(timestamp AS date) AS d, AVG(price) AS price
+  FROM prices.day
+  WHERE blockchain IN ('ethereum','robinhood') AND timestamp >= TIMESTAMP '2026-06-01'
+    AND contract_address IN (SELECT loan_token FROM params)
+  GROUP BY 1,2,3
 ),
 lt AS (SELECT blockchain, contract_address, decimals FROM tokens.erc20 WHERE contract_address IN (SELECT loan_token FROM params)),
 supply_usd AS (
@@ -40,16 +50,17 @@ supply_usd AS (
   JOIN params p ON p.chain=s.chain AND p.id=s.id
   JOIN lt ON lt.blockchain=s.chain AND lt.contract_address=p.loan_token
   LEFT JOIN dune.jodguy5641.result_spiral_oracle_daily od ON od.chain=s.chain AND od.oracle=p.oracle AND od.d=CAST(s.bt AS date)
-  LEFT JOIN loan_px lp ON lp.blockchain=s.chain AND lp.contract_address=p.loan_token AND lp.timestamp=date_trunc('hour', s.bt)
+  LEFT JOIN loan_px lp ON lp.blockchain=s.chain AND lp.contract_address=p.loan_token AND lp.d=CAST(s.bt AS date)
 ),
 borrow_usd AS (
   SELECT SUM(b.assets / power(10, lt.decimals) * lp.price) AS usd
   FROM borrows b
   JOIN params p ON p.chain=b.chain AND p.id=b.id
   JOIN lt ON lt.blockchain=b.chain AND lt.contract_address=p.loan_token
-  LEFT JOIN loan_px lp ON lp.blockchain=b.chain AND lp.contract_address=p.loan_token AND lp.timestamp=date_trunc('hour', b.bt)
+  LEFT JOIN loan_px lp ON lp.blockchain=b.chain AND lp.contract_address=p.loan_token AND lp.d=CAST(b.bt AS date)
 )
 SELECT s.usd - bo.usd AS all_time_deposited_usd,
        s.usd          AS all_time_looped_usd,
-       bo.usd         AS all_time_borrowed_usd
+       bo.usd         AS all_time_borrowed_usd,
+       CAST(now() AS date) AS computed_on
 FROM supply_usd s CROSS JOIN borrow_usd bo
