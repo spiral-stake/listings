@@ -1,91 +1,119 @@
 # DefiLlama listing — ready-to-file PR
 
-Everything below is final. The TVL adapter is `projects/spiral-stake/index.js` (in this folder); the
-logo is `spiral-stake.svg` (bundled here, sourced from app.spiralstake.xyz/logo.svg). Filing needs a
-GitHub account with a fork of DefiLlama-Adapters — steps at the bottom.
+TVL adapter: `projects/spiral-stake/index.js` (in this folder). Logo: `spiral-stake.svg` (bundled,
+from app.spiralstake.xyz/logo.svg). Everything below maps 1:1 to DefiLlama's current PR template.
 
 ---
 
-## Protocol metadata (for the listing entry)
+## ⚠️ Before you open the PR — repo notes from the template
 
-| Field | Value |
-|---|---|
-| **Name** | Spiral Stake |
-| **Website** | https://spiralstake.xyz  (dapp: https://app.spiralstake.xyz) |
-| **Logo** | `spiral-stake.svg` (vector) — hosted at https://app.spiralstake.xyz/logo.svg |
-| **Twitter / X** | https://x.com/0xspiralstake |
-| **Category** | Leveraged Farming |
-| **Chains** | Ethereum, Robinhood Chain |
-| **Token** | none (no CoinGecko / CMC id) |
-| **forkedFrom** | none |
-| **Treasury** | `0x9ced716f16651b69D5167C82003690621e8F90b9` |
-| **Oracle** | per-market Morpho Blue oracles (Spiral inherits each Morpho market's configured oracle; it runs none of its own) |
-| **Adapter start** | 2026-06-16 |
-| **Audits** | Phage (2026-01-20), Cyfrin (2026-03-12), Sherlock (2026-04-27) — links below |
-
-**Audit report URLs**
-- Phage: https://github.com/spiral-stake/v2-core/blob/main/audits/2026-01-20-phage-spiral-stake-v2.pdf
-- Cyfrin: https://github.com/spiral-stake/v2-core/blob/main/audits/2026-03-12-cyfrin-spiral-stake-v2.pdf
-- Sherlock: https://github.com/spiral-stake/v2-core/blob/main/audits/2026-04-27-sherlock-spiral-stake-v2.pdf
-
-> ⚠️ Pre-flight: confirm `spiral-stake/v2-core` is a **public** repo so the audit PDF links resolve
-> for reviewers. If it's private, either make it public or host the three PDFs on docs.spiralstake.xyz
-> and swap the links.
+- **Tick "Allow edits by maintainers"** on the PR page (the template explicitly requires it).
+- **Do NOT commit `package-lock.json`** — this repo uses **pnpm**; `npm install` left a stray
+  `package-lock.json` in the tree. Delete it (`rm package-lock.json`) and commit **only**
+  `projects/spiral-stake/index.js`. **Do not edit or push `pnpm-lock.yaml`**, and add no npm deps
+  (we added none).
+- **Not a fetch adapter** — TVL is computed from on-chain Morpho state (`getLogs` + `multiCall`), which
+  is what they now require. ✅
+- Fees/volume adapters go in a **separate** repo (`DefiLlama/dimension-adapters`) — optional, later.
+- To change listing info **after** merge, email **metadata@defillama.com**.
+- After merge it can take up to ~24h to appear on the UI; ping their Discord if longer.
 
 ---
 
-## Suggested PR title
+## Template fields — copy-paste answers
 
-`Add Spiral Stake`
+**Name (to be shown on DefiLlama):**
+Spiral Stake
 
-## Suggested PR body (paste into the PR)
+**Twitter Link:**
+https://x.com/0xspiralstake
 
-> **Spiral Stake** — one-transaction leveraged positions ("looping") on Morpho Blue. Flash-borrow the
-> loan token, swap to collateral, supply, borrow against it, repay the flash loan. Each position is
-> held by its own `UserProxy` clone.
->
-> **TVL methodology.** `tvl` = collateral − debt across all open Spiral positions (i.e. only the
-> user's own margin), `borrowed` = debt, and the module is flagged **`doublecounted: true`**. The
-> leveraged collateral is flash-borrowed and already counted inside Morpho Blue's TVL (Morpho Blue is
-> listed on DefiLlama on both chains), so reporting the gross looped figure would double-count. Same
-> shape as the Contango and Origami adapters. Discovery is via the `LeveragePositionOpened` event
-> (target-filtered) + `getUserLeveragePositions`, so it stays correct through closes, liquidations and
-> leverage increases.
->
-> **Chains:** Ethereum + Robinhood Chain.
->
-> **Note for reviewers running `test.js` locally:** the Robinhood leg may 429 against the public
-> Blockscout RPC (`robinhoodchain.blockscout.com`) — that endpoint rate-limits on the 3rd sequential
-> call. It is not an adapter defect; DefiLlama's production infra reads the chain fine (Morpho Blue
-> reports ~$207M there). Judge the Ethereum leg locally (it carries ~98% of TVL). Happy to provide an
-> Alchemy Robinhood RPC if useful.
->
-> Metadata (name, website, logo, twitter, category, audits, treasury, no token) in the PR
-> description / attached.
+**List of audit links if any:**
+- Phage Security (2026-01-20): https://github.com/spiral-stake/v2-core/blob/main/audits/2026-01-20-phage-spiral-stake-v2.pdf
+- Cyfrin (2026-03-12): https://github.com/spiral-stake/v2-core/blob/main/audits/2026-03-12-cyfrin-spiral-stake-v2.pdf
+- Sherlock (2026-04-27): https://github.com/spiral-stake/v2-core/blob/main/audits/2026-04-27-sherlock-spiral-stake-v2.pdf
+
+**Website Link:**
+https://spiralstake.xyz
+
+**Logo (High resolution, will be shown with rounded borders):**
+https://app.spiralstake.xyz/logo.svg  (vector; also attached to the PR as spiral-stake.svg)
+
+**Current TVL:**
+~$7,000 net equity across Ethereum + Robinhood Chain (computed live from chain by the adapter). Note
+the gross looped collateral (~$194k lifetime) is intentionally NOT counted — see methodology.
+
+**Treasury Addresses (if the protocol has treasury):**
+0x9ced716f16651b69D5167C82003690621e8F90b9
+
+**Chain:**
+Ethereum, Robinhood Chain
+
+**Coingecko ID:**
+(none — no token)
+
+**Coinmarketcap ID:**
+(none — no token)
+
+**Short Description (to be shown on DefiLlama):**
+Spiral Stake opens one-transaction leveraged ("looping") positions on Morpho Blue markets — flash-borrow the loan asset, swap to collateral, supply, and borrow against it — with each position held in its own proxy.
+
+**Token address and ticker if any:**
+None (no token).
+
+**Category (choose one):**
+Leveraged Farming
+
+**Oracle Provider(s):**
+Per-market Morpho Blue oracles (inherited). Spiral operates no oracle of its own; each position is
+valued and liquidated by the oracle configured on its Morpho Blue market — which varies by market
+(Chainlink/RedStone-style feeds for liquid collateral, Pendle PT oracles for PT collateral, etc.).
+
+**Implementation Details (how the oracle is integrated):**
+Spiral does not integrate a price oracle directly. Positions live in Morpho Blue markets, and each
+market's own oracle governs collateral valuation and liquidation. The TVL adapter reads raw on-chain
+collateral and debt token amounts from Morpho (no price feed of its own); DefiLlama prices the tokens.
+
+**Documentation/Proof (oracle usage):**
+https://docs.spiralstake.xyz — per-market `oracle` addresses are on-chain via Morpho
+`idToMarketParams`, and mirrored in v2-client/src/addresses/{1,4663}.json.
+
+**forkedFrom:**
+None.
+
+**methodology (what is counted as TVL, how it is calculated):**
+TVL = collateral − debt summed over all open Spiral positions (only the user's own margin), because
+the leveraged portion is flash-borrowed and immediately repaid out of the Morpho borrow. Debt is
+reported separately as `borrowed`. The collateral is already inside Morpho Blue's TVL, so the module
+is flagged `doublecounted: true`. Positions are discovered via the `LeveragePositionOpened` event and
+`getUserLeveragePositions`, then valued from Morpho on-chain state (`getMorphoPosition` /
+`getSharesValueInLoanToken`). Same shape as Contango and Origami.
+
+**Github org/user (Optional):**
+https://github.com/spiral-stake
+
+**Does this project have a referral program?**
+[CONFIRM before submitting — see REFERRAL-PLAN.md; answer Yes/No]
 
 ---
 
-## Filing steps
+## Filing steps (in your terminal, from this clone)
 
 ```sh
-# 1. Fork https://github.com/DefiLlama/DefiLlama-Adapters on GitHub, then:
-git clone https://github.com/<your-user>/DefiLlama-Adapters.git
-cd DefiLlama-Adapters && npm install
-
-# 2. Drop in the adapter
-mkdir -p projects/spiral-stake
-cp <listings>/defillama/projects/spiral-stake/index.js projects/spiral-stake/index.js
-
-# 3. Sanity-check (Ethereum leg is the meaningful one locally; see reviewer note)
-node test.js projects/spiral-stake/index.js
-
-# 4. Branch, commit, push, open PR to DefiLlama/DefiLlama-Adapters:main
-git checkout -b spiral-stake
-git add projects/spiral-stake/index.js
+cd /Users/bhimgoudapatil/Desktop/spiral-stake/v2/defillama-adapters
+rm -f package-lock.json                       # stray npm lockfile — repo uses pnpm; do not commit it
+git add projects/spiral-stake/index.js        # ONLY the adapter
 git commit -m "Add Spiral Stake"
-git push origin spiral-stake
-# open the PR with the title + body above
+git push -u origin spiral-stake
 ```
 
-The logo + full metadata go in the PR description (DefiLlama wires them into their protocol config).
-There is no token, so leave CoinGecko / CMC / token-address fields empty.
+Then open the PR (base `DefiLlama/DefiLlama-Adapters:main`, head `spiral-stake:spiral-stake`), title
+`Add Spiral Stake`, paste the template answers above, attach `spiral-stake.svg`, and **tick "Allow
+edits by maintainers."**
+
+Or, if the GitHub CLI is authenticated:
+```sh
+gh pr create --repo DefiLlama/DefiLlama-Adapters \
+  --base main --head spiral-stake:spiral-stake \
+  --title "Add Spiral Stake" --body-file ../listings/defillama/PR.md
+```
