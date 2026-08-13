@@ -93,7 +93,7 @@ is flagged `doublecounted: true`. Positions are discovered via the `LeveragePosi
 https://github.com/spiral-stake
 
 **Does this project have a referral program?**
-[CONFIRM before submitting — see REFERRAL-PLAN.md; answer Yes/No]
+Yes.
 
 ---
 
