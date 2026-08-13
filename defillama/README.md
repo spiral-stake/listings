@@ -2,7 +2,8 @@
 
 `projects/spiral-stake/index.js` mirrors its target path inside
 [DefiLlama/DefiLlama-Adapters](https://github.com/DefiLlama/DefiLlama-Adapters), so it drops in
-unchanged. **Not submitted** — hold until we decide to file the PR.
+unchanged. **Ready to file** (metadata resolved 2026-08-13) — the copy-paste PR body, metadata table,
+bundled logo (`spiral-stake.svg`) and filing steps are in [PR.md](./PR.md).
 
 ## How it computes TVL
 
@@ -83,26 +84,21 @@ Two consequences worth knowing:
    Robinhood result. Offer a better Robinhood RPC if they want one — we have an Alchemy endpoint
    configured in `mcp/.env` (`ROBINHOOD_RPC_URL`).
 
-## PR metadata — still needed from the founders
+## PR metadata — RESOLVED (2026-08-13)
 
-Everything else in the PR template is answered in `LISTINGS-PLAN.md` §2.1.
-
-- [ ] High-resolution logo
-- [ ] Official Twitter link
-- [ ] Public audit report URLs (Sherlock, Cyfrin, Phage)
-- [ ] CoinGecko ID / CoinMarketCap ID (leave empty if no token)
-- [ ] Token address + ticker, if any
-
-Pre-filled:
+Full table + copy-paste PR body in [PR.md](./PR.md). Summary:
 
 - **Name**: Spiral Stake
-- **Website**: https://app.spiralstake.xyz
-- **Chain**: Ethereum, Robinhood Chain
-- **Category**: Leveraged Farming
-- **forkedFrom**: none
+- **Website**: https://spiralstake.xyz  (dapp: https://app.spiralstake.xyz)
+- **Logo**: `spiral-stake.svg` (bundled here; from app.spiralstake.xyz/logo.svg)
+- **Twitter / X**: https://x.com/0xspiralstake
+- **Audits**: Phage (2026-01-20), Cyfrin (2026-03-12), Sherlock (2026-04-27) — GitHub PDF links in
+  [PR.md](./PR.md). ⚠️ confirm `spiral-stake/v2-core` is public so the links resolve.
+- **Token**: none → leave CoinGecko / CMC / token-address empty
+- **Chain**: Ethereum, Robinhood Chain · **Category**: Leveraged Farming · **forkedFrom**: none
 - **Treasury**: `0x9ced716f16651b69D5167C82003690621e8F90b9`
 - **Oracle**: per-market Morpho Blue oracles — Spiral inherits whichever oracle each Morpho market
   is configured with, rather than operating its own. Market list and per-market `oracle` addresses:
   `v2-client/src/addresses/{1,4663}.json`.
-- **Github org**: (optional — only if we want commit activity tracked)
+- **Github org** (optional): https://github.com/spiral-stake
 - **Referral program**: (see `REFERRAL-PLAN.md` — confirm whether it's live before answering)
