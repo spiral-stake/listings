@@ -52,7 +52,7 @@ if (!KEY) {
 // its display queries just re-reads that — cheap, and keeps the v1 dashboard's timestamp current.
 const QUERY_IDS = [
   // v2 (live)
-  8144540, // all-time totals — thin display read of result_spiral_alltime matview (compute: 8101568)
+  // (all-time totals 8144540 + result_spiral_alltime matview retired 2026-08-25 — see README)
   8081304, // headline KPIs
   8081588, // per-market breakdown
   8081589, // per-chain split
